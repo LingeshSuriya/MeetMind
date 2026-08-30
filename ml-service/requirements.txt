@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+spacy
+transformers
+torch
+sentence-transformers
+pandas
+python-multipart
+scikit-learn

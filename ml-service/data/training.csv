@@ -1,0 +1,11 @@
+text,label
+"Arun will complete the API by Friday",ACTION_ITEM
+"Priya will test the authentication module",ACTION_ITEM
+"We decided to use PostgreSQL instead of MongoDB",DECISION
+"Let's go with the React framework for the frontend",DECISION
+"The meeting will happen next Monday",DEADLINE
+"We need everything ready before the end of the month",DEADLINE
+"We discussed authentication flow today",DISCUSSION
+"The new design looks great",INFORMATION
+"Can everyone hear me?",OTHER
+"Hello and welcome to the meeting",OTHER

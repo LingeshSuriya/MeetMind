@@ -1,0 +1,18 @@
+Meeting: Startup/product discussion
+Date: Nov 12, 2023
+
+Sarah: Thanks for joining. Let's discuss our upcoming product launch.
+Mike: We need to figure out our marketing strategy.
+Jessica: We decided to focus on LinkedIn and Twitter for our initial marketing push.
+Sarah: Good idea. Mike will create the marketing materials.
+Mike: When do you need them?
+Sarah: Let's aim for tomorrow.
+Mike: That's a bit tight, but I will try to have the marketing materials ready tomorrow.
+Jessica: I'll work on the press release.
+Sarah: Jessica, please finalize the press release by September 10.
+Jessica: Sure thing. We also need to talk about pricing.
+Mike: We discussed pricing tiers during the last sync. I think $15/month for pro is good.
+Sarah: Agreed. We decided to set the pro tier at $15 per month.
+Jessica: What about customer support?
+Sarah: Arun will handle customer support emails during the launch week.
+Mike: Sounds like a plan. Let's reconvene next week.

@@ -1,0 +1,20 @@
+Meeting: Software project planning
+Date: Oct 5, 2023
+
+Alice: Let's start the meeting. We need to finalize the stack.
+Bob: I suggest we use React for the frontend and Node.js for the backend. It's standard.
+Charlie: Sounds good. We decided to use React and Node.js.
+Alice: Great. Now, what about the database?
+Bob: Let's use PostgreSQL instead of MongoDB. We have structured data.
+Charlie: Okay, I agree with PostgreSQL.
+Alice: Perfect. Bob, you will setup the PostgreSQL database by next Monday.
+Bob: Got it. I'll have it ready.
+Alice: Charlie will implement the authentication module. Please have it done before the end of the month.
+Charlie: Will do.
+Alice: We also discussed the authentication flow today. It will be JWT based.
+Bob: One more thing, we need to test the API.
+Alice: Right. Priya and Arun will test the API once it's deployed.
+Charlie: Does anyone know when the design will be ready?
+Alice: The design team said they will deliver the Figma files by Friday.
+Bob: Awesome. The new design looks great.
+Alice: Okay, I think that covers everything. Let's wrap up.
