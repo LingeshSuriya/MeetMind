@@ -28,12 +28,12 @@ graph TD
 ## Setup Instructions
 
 ### 1. Database (PostgreSQL)
-Start the PostgreSQL database using Docker:
+Since you have PostgreSQL installed locally, you do not need Docker. We have already initialized the database for you. 
+If you ever need to reset it, you can run this command from the project root:
 ```bash
-cd meetmind
-docker-compose up -d
+psql -U postgres -d meetmind -f database/schema.sql
 ```
-*This will start a PostgreSQL instance on port `5432` with user `postgres` and password `password`.*
+*(Make sure your local PostgreSQL is running on the default port 5432. Update the `.env` file in the `backend/` folder if your postgres user has a specific password).*
 
 ### 2. ML Service (Python / FastAPI)
 The ML service uses PyTorch, Transformers, and spaCy.
