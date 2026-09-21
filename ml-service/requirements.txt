@@ -8,3 +8,4 @@ sentence-transformers
 pandas
 python-multipart
 scikit-learn
+whisper

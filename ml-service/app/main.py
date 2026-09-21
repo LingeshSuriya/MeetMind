@@ -1,6 +1,20 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional
+import whisper
+import os
+
+# Whisper model is loaded lazily on first /transcribe call.
+# This avoids a network download at startup if the model is not cached yet.
+_whisper_model = None
+
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        print("Loading Whisper model (this may download ~140 MB on first run)...")
+        _whisper_model = whisper.load_model("base")
+        print("Whisper model loaded.")
+    return _whisper_model
 
 from app.preprocessing.segmentation import segment_sentences
 from app.classification.classifier import classify_sentence
@@ -71,6 +85,56 @@ def analyze_transcript(request: TranscriptRequest):
         "keyTopics": key_topics,
         "participants": list(all_participants)
     }
+
+@app.post("/transcribe", response_model=ExtractedResult)
+async def transcribe_audio(file: UploadFile = File(...)):
+    # Save uploaded file temporarily
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    # Run Whisper transcription (loads model on first call)
+    result = get_whisper_model().transcribe(temp_path)
+    transcript_text = result["text"]
+    # Clean up temporary file
+    os.remove(temp_path)
+    # Reuse existing analysis pipeline
+    request = TranscriptRequest(transcript=transcript_text)
+    return analyze_transcript(request)
+
+class SummaryResult(BaseModel):
+    summary: str
+
+@app.post("/summarize", response_model=SummaryResult)
+def summarize_transcript(request: TranscriptRequest):
+    """
+    Extractive summarizer — works fully offline, no model download needed.
+    Picks the opening sentence for context + up to 3 sentences that contain
+    decision/action signals.
+    """
+    if not request.transcript or len(request.transcript.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Transcript is empty")
+
+    sentences = segment_sentences(request.transcript)
+    if not sentences:
+        return {"summary": "No content to summarize."}
+
+    key_signals = [
+        'decided', 'agreed', 'approved', 'confirmed', 'action',
+        'will', 'must', 'should', 'deadline', 'by', 'next',
+        'assigned', 'responsible', 'follow up', 'task'
+    ]
+    key_sentences = [
+        s for s in sentences
+        if any(kw in s.lower() for kw in key_signals)
+    ]
+
+    summary_parts = [sentences[0]]   # always start with the opening sentence
+    for s in key_sentences[:3]:
+        if s not in summary_parts:
+            summary_parts.append(s)
+
+    return {"summary": " ".join(summary_parts)}
 
 if __name__ == "__main__":
     import uvicorn

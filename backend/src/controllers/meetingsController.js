@@ -23,7 +23,7 @@ exports.analyzeMeeting = async (req, res) => {
         // 2. Call ML Service
         let mlResponse;
         try {
-            mlResponse = await axios.post(`${ML_SERVICE_URL}/analyze`, { transcript: text });
+            mlResponse = await axios.post(`${ML_SERVICE_URL}/analyze`, { transcript: text }, { timeout: 30000 });
         } catch (mlError) {
             console.error("ML Service Error:", mlError.message);
             return res.status(503).json({ error: "ML Service is unavailable. Please try again later." });
@@ -107,10 +107,28 @@ exports.analyzeMeeting = async (req, res) => {
 
 exports.getMeetings = async (req, res) => {
     try {
-        const result = await db.query('SELECT id, title, created_at FROM meetings ORDER BY created_at DESC');
-        res.json(result.rows);
+        const page   = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit  = Math.min(100, parseInt(req.query.limit) || 20);
+        const offset = (page - 1) * limit;
+
+        const [result, countResult] = await Promise.all([
+            db.query(
+                'SELECT id, title, created_at FROM meetings ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+                [limit, offset]
+            ),
+            db.query('SELECT COUNT(*) FROM meetings')
+        ]);
+
+        const total = parseInt(countResult.rows[0].count);
+        res.json({
+            meetings: result.rows,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        });
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch meetings" });
+        res.status(500).json({ error: 'Failed to fetch meetings' });
     }
 };
 
@@ -197,3 +215,28 @@ exports.updateActionItemStatus = async (req, res) => {
         res.status(500).json({ error: "Failed to update action item" });
     }
 }
+
+exports.summarizeMeeting = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const meetingRes = await db.query('SELECT transcript FROM meetings WHERE id = $1', [id]);
+        if (meetingRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Meeting not found' });
+        }
+        const { transcript } = meetingRes.rows[0];
+        let mlResponse;
+        try {
+            mlResponse = await axios.post(`${ML_SERVICE_URL}/summarize`, { transcript }, { timeout: 30000 });
+        } catch (mlErr) {
+            console.error('Summarize ML error:', mlErr.message);
+            return res.status(503).json({ error: 'ML Service unavailable. Is it running on port 8000?' });
+        }
+        const summary = mlResponse.data.summary;
+        // Cache the summary back into the meetings table
+        await db.query('UPDATE meetings SET summary = $1 WHERE id = $2', [summary, id]);
+        res.json({ summary });
+    } catch (err) {
+        console.error('summarizeMeeting error:', err);
+        res.status(500).json({ error: 'Failed to generate summary' });
+    }
+};

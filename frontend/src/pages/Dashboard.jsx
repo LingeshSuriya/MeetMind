@@ -28,19 +28,35 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getDashboardStats()
-      .then(data => {
-        setStats(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError('Failed to load dashboard statistics.');
-        setLoading(false);
-      });
+    const load = () =>
+      getDashboardStats()
+        .then(data => { setStats(data); setLoading(false); })
+        .catch(() => { setError('Failed to load dashboard statistics.'); setLoading(false); });
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
-    return <div className="p-8">Loading dashboard...</div>;
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="h-8 w-48 bg-slate-200 rounded animate-pulse mb-2" />
+        <div className="h-4 w-72 bg-slate-100 rounded animate-pulse mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-slate-100 rounded-xl animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-3 w-24 bg-slate-100 rounded animate-pulse mb-2" />
+                  <div className="h-8 w-16 bg-slate-200 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {

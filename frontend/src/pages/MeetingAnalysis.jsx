@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getMeetingById, updateActionItemStatus } from '../services/api';
+import { getMeetingById, updateActionItemStatus, summarizeMeeting } from '../services/api';
+import { useCallback } from 'react';
 import { Users, CheckSquare, MessageSquare, Clock, Tag, ChevronDown } from 'lucide-react';
 
 function ConfidenceBadge({ score }) {
@@ -28,6 +29,8 @@ export default function MeetingAnalysis() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('insights');
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     getMeetingById(id)
@@ -47,7 +50,7 @@ export default function MeetingAnalysis() {
   const handleStatusChange = async (itemId, newStatus) => {
     try {
       await updateActionItemStatus(itemId, newStatus);
-      const updated = data.actionItems.map(item => 
+      const updated = data.actionItems.map(item =>
         item.id === itemId ? { ...item, status: newStatus } : item
       );
       setData({ ...data, actionItems: updated });
@@ -55,6 +58,49 @@ export default function MeetingAnalysis() {
       alert("Failed to update status");
     }
   };
+
+  const handleGetSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const result = await summarizeMeeting(id);
+      setSummary(result.summary);
+      setActiveTab('summary');
+    } catch (e) {
+      setSummary('Failed to generate summary. Is the ML service running on port 8000?');
+      setActiveTab('summary');
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [id]);
+
+  const handleExportMarkdown = useCallback(() => {
+    const lines = [
+      `# ${data.title}`,
+      `Analyzed: ${new Date(data.created_at).toLocaleDateString()}`,
+      '',
+      ...(summary ? ['## Summary', summary, ''] : []),
+      '## Action Items',
+      ...(data.actionItems?.map(a =>
+        `- [${a.status}] **${a.person}**: ${a.task}${a.deadline ? ` _(by ${a.deadline})_` : ''}`
+      ) || ['_None_']),
+      '',
+      '## Key Decisions',
+      ...(data.decisions?.map(d => `- ${d.decision}`) || ['_None_']),
+      '',
+      '## Deadlines',
+      ...(data.deadlines?.map(d => `- **${d.date}**: ${d.description}`) || ['_None_']),
+      '',
+      '## Participants',
+      ...(data.participants?.map(p => `- ${p.name}`) || ['_None_']),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `${data.title.replace(/\s+/g, '_')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data, summary]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -65,6 +111,21 @@ export default function MeetingAnalysis() {
           <span>•</span>
           <span className="flex items-center gap-1"><Users size={16} /> {data.participants?.length || 0} Participants</span>
         </div>
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={handleGetSummary}
+            disabled={summaryLoading}
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:bg-slate-300 transition-colors"
+          >
+            {summaryLoading ? 'Generating...' : '✨ AI Summary'}
+          </button>
+          <button
+            onClick={handleExportMarkdown}
+            className="px-4 py-2 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            ⬇ Export Markdown
+          </button>
+        </div>
       </div>
 
       <div className="flex border-b border-slate-200 mb-8">
@@ -74,11 +135,17 @@ export default function MeetingAnalysis() {
         >
           Extracted Insights
         </button>
-        <button 
+        <button
           className={`px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === 'transcript' ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
           onClick={() => setActiveTab('transcript')}
         >
           Raw Transcript
+        </button>
+        <button
+          className={`px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-purple-500 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          onClick={() => setActiveTab('summary')}
+        >
+          ✨ AI Summary
         </button>
       </div>
 
@@ -217,6 +284,36 @@ export default function MeetingAnalysis() {
           <div className="prose max-w-none text-slate-800 font-serif leading-loose whitespace-pre-wrap">
             {data.transcript}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'summary' && (
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 min-h-[200px]">
+          {summary ? (
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 mb-4">Meeting Summary</h2>
+              <p className="text-slate-700 leading-relaxed text-lg">{summary}</p>
+              <button
+                onClick={handleGetSummary}
+                disabled={summaryLoading}
+                className="mt-6 px-4 py-2 bg-purple-100 text-purple-700 text-sm rounded-lg hover:bg-purple-200 transition-colors"
+              >
+                {summaryLoading ? 'Regenerating...' : '↺ Regenerate'}
+              </button>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-slate-500 mb-2 text-lg">No summary generated yet.</p>
+              <p className="text-slate-400 text-sm mb-6">Click the button to extract key insights from the transcript.</p>
+              <button
+                onClick={handleGetSummary}
+                disabled={summaryLoading}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-slate-300 transition-colors font-medium"
+              >
+                {summaryLoading ? '⏳ Generating...' : '✨ Generate AI Summary'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
