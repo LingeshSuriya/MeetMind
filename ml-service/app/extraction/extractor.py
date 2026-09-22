@@ -27,19 +27,36 @@ _DATE_PATTERNS = re.compile(
     re.IGNORECASE
 )
 
-# Capitalised words that look like names (heuristic: Title Case, 2–15 chars, not sentence-start)
-_NAME_PATTERN = re.compile(r'\b([A-Z][a-z]{1,14}(?:\s[A-Z][a-z]{1,14})?)\b')
+# Capitalised words that look like names.
+# Requires at least 2 lowercase chars after capital (avoids "A", "AI", "OK", etc.)
+# Only matches first-name or first-name + last-name patterns.
+_NAME_PATTERN = re.compile(r'\b([A-Z][a-z]{2,14}(?:\s[A-Z][a-z]{2,14})?)\b')
 
-# Words to exclude from name detection (common sentence-start words, acronyms, etc.)
+# Words to exclude from name detection
 _NAME_STOPWORDS = {
     "The", "This", "That", "These", "Those", "There", "Their",
     "We", "Our", "I", "You", "He", "She", "It", "They",
     "And", "But", "Or", "So", "If", "When", "After", "Before",
-    "Please", "Let", "Make", "Also", "However", "Please",
+    "Please", "Let", "Make", "Also", "However", "With", "From",
+    "Have", "Has", "Was", "Were", "Are", "Will", "Can", "Could",
+    "Would", "Should", "Does", "Did", "Not", "For", "All",
+    "Option", "Action", "Item", "Task", "Team", "Meeting",
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
     "Saturday", "Sunday", "January", "February", "March", "April",
     "May", "June", "July", "August", "September", "October", "November", "December"
 }
+
+
+def _clean_person_name(name: str) -> str:
+    """
+    Clean up noisy person names from NER.
+    'Option A. Sarah' -> 'Sarah'  (strip leading abbreviation tokens)
+    'A. John' -> 'John'
+    """
+    # Remove leading tokens that look like labels/abbreviations (e.g. "Option A.")
+    # Pattern: word followed by a capital letter + dot
+    name = re.sub(r'^(?:[A-Za-z]+\s+)?[A-Z]\.\s*', '', name).strip()
+    return name
 
 
 def extract_entities(sentence: str):
@@ -51,8 +68,15 @@ def extract_entities(sentence: str):
 
     if nlp is not None:
         doc = nlp(sentence)
-        people = list({ent.text for ent in doc.ents if ent.label_ == "PERSON"})
-        dates  = list({ent.text for ent in doc.ents if ent.label_ in ("DATE", "TIME")})
+        # Clean and filter person names
+        raw_people = {ent.text for ent in doc.ents if ent.label_ == "PERSON"}
+        people = []
+        for name in raw_people:
+            cleaned = _clean_person_name(name)
+            # Only keep names with at least 3 chars and no digits
+            if cleaned and len(cleaned) >= 3 and not re.search(r'\d', cleaned):
+                people.append(cleaned)
+        dates = list({ent.text for ent in doc.ents if ent.label_ in ("DATE", "TIME")})
         return {"people": people, "dates": dates}
 
     # ── Regex fallback ────────────────────────────────────────────────────────

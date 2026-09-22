@@ -18,12 +18,23 @@ def _get_nlp():
 
 def _regex_split(transcript: str):
     """
-    Simple regex-based sentence splitter used when spaCy is unavailable.
-    Handles common sentence endings: '.', '!', '?', and newlines.
+    Improved regex sentence splitter. Handles:
+    - Standard sentence endings (. ! ?)
+    - Abbreviations like 'Option A.' by requiring the next word to start with a capital
+    - Newlines as natural sentence boundaries
     """
-    # Split on sentence-ending punctuation or newlines
-    raw = re.split(r'(?<=[.!?])\s+|[\n\r]+', transcript)
-    return [s.strip() for s in raw if s.strip() and len(s.strip()) > 5]
+    # First split on newlines
+    chunks = re.split(r'[\n\r]+', transcript)
+    sentences = []
+    for chunk in chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        # Split on sentence-ending punctuation followed by space + capital letter
+        # This avoids splitting on abbreviations like "Option A." mid-sentence
+        parts = re.split(r'(?<=[.!?])\s+(?=[A-Z])', chunk)
+        sentences.extend(p.strip() for p in parts if p.strip() and len(p.strip()) > 5)
+    return sentences
 
 
 def segment_sentences(transcript: str) -> list:

@@ -1,18 +1,24 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional
-import whisper
 import os
 
-# Whisper model is loaded lazily on first /transcribe call.
-# This avoids a network download at startup if the model is not cached yet.
+# Whisper is imported lazily so the service starts even when openai-whisper
+# is not installed or the model has not been downloaded yet.
 _whisper_model = None
 
 def get_whisper_model():
     global _whisper_model
     if _whisper_model is None:
-        print("Loading Whisper model (this may download ~140 MB on first run)...")
-        _whisper_model = whisper.load_model("base")
+        try:
+            import whisper as _whisper
+        except ImportError:
+            raise HTTPException(
+                status_code=503,
+                detail="openai-whisper is not installed. Run: pip install openai-whisper"
+            )
+        print("Loading Whisper model (may download ~140 MB on first run)...")
+        _whisper_model = _whisper.load_model("base")
         print("Whisper model loaded.")
     return _whisper_model
 
