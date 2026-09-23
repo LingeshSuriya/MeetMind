@@ -4,16 +4,36 @@ let transcript = [];
 let lastText = '';
 let lastSpeaker = '';
 
-// ─── Restore persisted transcript from previous session ───────────────────────
-chrome.storage.local.get(['meetmind_transcript'], function(res) {
-    if (res.meetmind_transcript && Array.isArray(res.meetmind_transcript)) {
-        transcript = res.meetmind_transcript;
-        updateIndicator(transcript.length);
+// ─── Extension context guard ──────────────────────────────────────────────────
+// When the extension is reloaded/updated, the old content script loses its
+// context. All chrome.* calls then throw "Extension context invalidated."
+// We check before every chrome API call to avoid uncaught errors.
+function isContextValid() {
+    try {
+        return !!chrome.runtime.id;
+    } catch (e) {
+        return false;
     }
-});
+}
+
+// ─── Restore persisted transcript from previous session ───────────────────────
+if (isContextValid()) {
+    chrome.storage.local.get(['meetmind_transcript'], function(res) {
+        if (chrome.runtime.lastError) return; // context may have gone
+        if (res.meetmind_transcript && Array.isArray(res.meetmind_transcript)) {
+            transcript = res.meetmind_transcript;
+            updateIndicator(transcript.length);
+        }
+    });
+}
 
 function persist() {
-    chrome.storage.local.set({ meetmind_transcript: transcript });
+    if (!isContextValid()) return;
+    try {
+        chrome.storage.local.set({ meetmind_transcript: transcript });
+    } catch (e) {
+        // Extension context invalidated — stop trying
+    }
 }
 
 // ─── On-page indicator ────────────────────────────────────────────────────────
@@ -47,7 +67,6 @@ function handleNewText(speaker, text) {
     if (text.startsWith(lastText) && lastText.length > 0
         && transcript.length > 0
         && transcript[transcript.length - 1].speaker === speaker) {
-        // Caption streaming word-by-word — update in place
         transcript[transcript.length - 1].text = text;
     } else if (!lastText.startsWith(text)) {
         transcript.push({
@@ -64,11 +83,15 @@ function handleNewText(speaker, text) {
 }
 
 // ─── PRIMARY: Web Speech API ──────────────────────────────────────────────────
-// Captures YOUR microphone directly. Works even without CC turned on.
 let recognition = null;
 let recognitionActive = false;
+let networkErrorCount = 0;   // track consecutive network failures
+const MAX_NETWORK_RETRIES = 3;
 
 function startSpeechRecognition() {
+    // Stop trying if the extension context is gone
+    if (!isContextValid()) return false;
+
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
         console.warn('MeetMind: Web Speech API unavailable, using DOM fallback only.');
@@ -83,12 +106,14 @@ function startSpeechRecognition() {
 
     recognition.onstart = function() {
         recognitionActive = true;
-        console.log('MeetMind: Speech recognition ACTIVE (microphone).');
+        networkErrorCount = 0;  // reset on successful start
+        console.log('MeetMind: Speech recognition ACTIVE.');
         const ind = document.getElementById('meetmind-indicator');
         if (ind) ind.title = 'MeetMind is listening via microphone';
     };
 
     recognition.onresult = function(event) {
+        if (!isContextValid()) return;
         let finalText = '';
         let interimText = '';
 
@@ -103,30 +128,53 @@ function startSpeechRecognition() {
         if (finalText.trim()) {
             handleNewText('You', finalText.trim());
         } else if (interimText.trim()) {
-            // Show interim preview in indicator
             const el = document.getElementById('meetmind-indicator');
             if (el) el.textContent = '\uD83C\uDFA4 ' + interimText.trim().slice(0, 40) + '...';
         }
     };
 
     recognition.onerror = function(event) {
-        console.warn('MeetMind: Speech recognition error:', event.error);
         recognitionActive = false;
-        // Auto-restart unless the tab closed or recognition was intentionally aborted
-        if (event.error !== 'aborted' && event.error !== 'not-allowed') {
-            setTimeout(startSpeechRecognition, 3000);
-        }
-        if (event.error === 'not-allowed') {
-            console.error('MeetMind: Microphone permission denied. Using DOM fallback only.');
+
+        switch (event.error) {
+            case 'not-allowed':
+                // User denied mic — don't retry, just use DOM fallback
+                console.warn('MeetMind: Microphone permission denied. DOM fallback only.');
+                break;
+
+            case 'network':
+                // Google speech servers unreachable (network restriction or no meeting yet)
+                networkErrorCount++;
+                if (networkErrorCount <= MAX_NETWORK_RETRIES) {
+                    console.warn('MeetMind: Network error (' + networkErrorCount + '/' + MAX_NETWORK_RETRIES + '). Retrying in 10s...');
+                    setTimeout(startSpeechRecognition, 10000);
+                } else {
+                    console.warn('MeetMind: Speech API unreachable after ' + MAX_NETWORK_RETRIES + ' attempts. DOM fallback only.');
+                    // Show a subtle indicator
+                    const el = document.getElementById('meetmind-indicator');
+                    if (el) el.title = 'Speech API offline — DOM CC fallback active';
+                }
+                break;
+
+            case 'no-speech':
+            case 'aborted':
+                // Normal — silence or tab switch. onend will handle restart.
+                break;
+
+            default:
+                console.warn('MeetMind: Speech recognition error:', event.error);
+                setTimeout(startSpeechRecognition, 5000);
         }
     };
 
     recognition.onend = function() {
         recognitionActive = false;
-        // Auto-restart to keep capturing continuously
-        setTimeout(function() {
-            if (!recognitionActive) startSpeechRecognition();
-        }, 1000);
+        // Auto-restart ONLY if context is still valid and not too many network errors
+        if (isContextValid() && networkErrorCount < MAX_NETWORK_RETRIES) {
+            setTimeout(function() {
+                if (!recognitionActive && isContextValid()) startSpeechRecognition();
+            }, 1000);
+        }
     };
 
     try {
@@ -139,7 +187,6 @@ function startSpeechRecognition() {
 }
 
 // ─── SECONDARY: DOM-based CC observer ────────────────────────────────────────
-// Catches OTHER speakers' captions displayed in Google Meet CC.
 const CONTAINER_SELECTORS = [
     '[aria-label="Captions"]',
     '[aria-label="Caption"]',
@@ -151,12 +198,13 @@ const CONTAINER_SELECTORS = [
 ];
 
 const BLOCK_SELECTORS = [
-    ['.zs7s8d', '.CNusmb'],   // Meet 2024-2025
-    ['.CN2rsf', '.iTTPOb'],   // Older Meet
-    ['span:first-of-type', 'span:last-of-type']  // generic
+    ['.zs7s8d', '.CNusmb'],
+    ['.CN2rsf', '.iTTPOb'],
+    ['span:first-of-type', 'span:last-of-type']
 ];
 
 function tryExtractFromContainers() {
+    if (!isContextValid()) return;
     CONTAINER_SELECTORS.forEach(function(sel) {
         document.querySelectorAll(sel).forEach(function(c) {
             extractFromContainer(c);
@@ -174,7 +222,6 @@ function extractFromContainer(container) {
             if (speaker !== text) { handleNewText(speaker, text); return; }
         }
     }
-    // Generic span-based fallback
     const spans = Array.from(container.querySelectorAll('span')).filter(function(s) {
         return s.offsetParent !== null && s.innerText && s.innerText.trim().length > 2;
     });
@@ -193,7 +240,6 @@ function startDOMFallback() {
     });
     obs.observe(document.body, { childList: true, subtree: true, characterData: true });
     setInterval(tryExtractFromContainers, 1000);
-    console.log('MeetMind: DOM fallback observer started.');
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -212,6 +258,8 @@ if (document.readyState === 'loading') {
 
 // ─── Message handlers ─────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    if (!isContextValid()) return;
+
     if (request.action === 'GET_TRANSCRIPT') {
         const formatted = transcript.map(function(t) {
             return t.speaker + ': ' + t.text;
@@ -236,6 +284,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         sendResponse({
             count: transcript.length,
             speechAPIActive: recognitionActive,
+            networkErrors: networkErrorCount,
             containersFound: CONTAINER_SELECTORS.reduce(function(a, s) {
                 return a + document.querySelectorAll(s).length;
             }, 0),
