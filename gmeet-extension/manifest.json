@@ -5,8 +5,7 @@
   "description": "Captures Google Meet speech in real-time and sends insights to MeetMind.",
   "permissions": [
     "storage",
-    "tabs",
-    "microphone"
+    "tabs"
   ],
   "host_permissions": [
     "https://meet.google.com/*",
