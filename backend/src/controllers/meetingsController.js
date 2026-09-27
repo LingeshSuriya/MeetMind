@@ -219,24 +219,140 @@ exports.updateActionItemStatus = async (req, res) => {
 exports.summarizeMeeting = async (req, res) => {
     const { id } = req.params;
     try {
-        const meetingRes = await db.query('SELECT transcript FROM meetings WHERE id = $1', [id]);
+        // Fetch all extracted meeting data from DB
+        const [meetingRes, actionRes, decisionRes, deadlineRes, participantRes, topicRes] = await Promise.all([
+            db.query('SELECT * FROM meetings WHERE id = $1', [id]),
+            db.query('SELECT * FROM action_items WHERE meeting_id = $1 ORDER BY confidence DESC', [id]),
+            db.query('SELECT * FROM decisions WHERE meeting_id = $1 ORDER BY confidence DESC', [id]),
+            db.query('SELECT * FROM deadlines WHERE meeting_id = $1 ORDER BY confidence DESC', [id]),
+            db.query('SELECT * FROM participants WHERE meeting_id = $1', [id]),
+            db.query('SELECT * FROM key_topics WHERE meeting_id = $1', [id]),
+        ]);
+
         if (meetingRes.rows.length === 0) {
             return res.status(404).json({ error: 'Meeting not found' });
         }
-        const { transcript } = meetingRes.rows[0];
-        let mlResponse;
-        try {
-            mlResponse = await axios.post(`${ML_SERVICE_URL}/summarize`, { transcript }, { timeout: 30000 });
-        } catch (mlErr) {
-            console.error('Summarize ML error:', mlErr.message);
-            return res.status(503).json({ error: 'ML Service unavailable. Is it running on port 8000?' });
+
+        const meeting   = meetingRes.rows[0];
+        const actions   = actionRes.rows;
+        const decisions = decisionRes.rows;
+        const deadlines = deadlineRes.rows;
+        const people    = participantRes.rows;
+        const topics    = topicRes.rows;
+
+        // ── Build structured, human-readable summary ──────────────────────────
+        const date = new Date(meeting.created_at).toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        const nameList = people.map(p => p.name).join(', ') || 'multiple participants';
+        const lines = [];
+
+        // 1. Overview sentence
+        lines.push(
+            `This meeting was held on ${date} with ${people.length || 'several'} participant${people.length !== 1 ? 's' : ''} (${nameList}).`
+        );
+
+        // 2. Topics
+        if (topics.length) {
+            lines.push(`Topics discussed included ${topics.map(t => t.topic).join(', ')}.`);
         }
-        const summary = mlResponse.data.summary;
-        // Cache the summary back into the meetings table
+
+        // 3. Decisions (narrative)
+        if (decisions.length) {
+            lines.push('');
+            lines.push('Key decisions made:');
+            decisions.forEach(d => {
+                // Strip "We decided to" / speaker prefixes for cleaner output
+                const text = d.decision
+                    .replace(/^(we\s+)?(decided|agreed|resolved|confirmed)\s+(to\s+)?/i, '')
+                    .replace(/^[A-Za-z]+:\s*/,'')
+                    .trim();
+                const capitalised = text.charAt(0).toUpperCase() + text.slice(1);
+                lines.push(`• ${capitalised}`);
+            });
+        }
+
+        // 4. Action items (narrative)
+        if (actions.length) {
+            lines.push('');
+            lines.push('Action items assigned:');
+            actions.forEach(a => {
+                const who = a.person && a.person !== 'Unknown' ? a.person : 'Team';
+                const deadline = a.deadline ? ` — due ${a.deadline}` : '';
+                // Strip leading speaker name from task text
+                const task = a.task.replace(/^[A-Za-z]+:\s*/, '').trim();
+                lines.push(`• ${who}: ${task}${deadline}`);
+            });
+        }
+
+        // 5. Upcoming deadlines
+        if (deadlines.length) {
+            lines.push('');
+            lines.push('Key deadlines:');
+            deadlines.forEach(d => {
+                const desc = d.description.replace(/^[A-Za-z]+:\s*/, '').trim();
+                lines.push(`• ${d.date ? d.date + ': ' : ''}${desc}`);
+            });
+        }
+
+        // 6. Closing
+        const totalItems = actions.length + decisions.length + deadlines.length;
+        if (totalItems > 0) {
+            lines.push('');
+            lines.push(
+                `Overall, ${totalItems} item${totalItems !== 1 ? 's' : ''} were captured — ` +
+                `${actions.length} action item${actions.length !== 1 ? 's' : ''}, ` +
+                `${decisions.length} decision${decisions.length !== 1 ? 's' : ''}, and ` +
+                `${deadlines.length} deadline${deadlines.length !== 1 ? 's' : ''}.`
+            );
+        }
+
+        const summary = lines.join('\n');
+
+        // Cache in DB so next load is instant
         await db.query('UPDATE meetings SET summary = $1 WHERE id = $2', [summary, id]);
+
         res.json({ summary });
     } catch (err) {
         console.error('summarizeMeeting error:', err);
         res.status(500).json({ error: 'Failed to generate summary' });
+    }
+};
+
+// ── Global action items (all meetings) ────────────────────────────────────────
+exports.getAllActionItems = async (req, res) => {
+    try {
+        const { status } = req.query;
+        const params = [];
+        let where = '';
+        if (status) { where = 'WHERE ai.status = $1'; params.push(status); }
+        const result = await db.query(
+            `SELECT ai.*, m.title as meeting_title, m.created_at as meeting_date
+             FROM action_items ai
+             JOIN meetings m ON m.id = ai.meeting_id
+             ${where}
+             ORDER BY ai.created_at DESC
+             LIMIT 200`,
+            params
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch action items' });
+    }
+};
+
+// ── Upcoming deadlines (all meetings) ─────────────────────────────────────────
+exports.getAllDeadlines = async (req, res) => {
+    try {
+        const result = await db.query(
+            `SELECT d.*, m.title as meeting_title, m.id as meeting_id, m.created_at as meeting_date
+             FROM deadlines d
+             JOIN meetings m ON m.id = d.meeting_id
+             ORDER BY d.created_at DESC
+             LIMIT 200`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch deadlines' });
     }
 };

@@ -3,6 +3,8 @@ const router = express.Router();
 const meetingsController = require('../controllers/meetingsController');
 
 router.post('/analyze', meetingsController.analyzeMeeting);
+router.get('/action-items', meetingsController.getAllActionItems);
+router.get('/deadlines', meetingsController.getAllDeadlines);
 router.get('/', meetingsController.getMeetings);
 router.get('/stats', meetingsController.getDashboardStats);
 router.get('/:id', meetingsController.getMeetingById);
