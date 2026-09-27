@@ -1,0 +1,19 @@
+Arjun: Good evening, Lisa. Thanks for making the time. Let me pull up our status doc.
+Lisa: Of course. We're excited about the integration but we have a few concerns from our technical team.
+Arjun: Absolutely, let's go through them. What's the first item?
+Lisa: The main one is data residency. Our compliance team requires all data to stay within the EU. Is that something you can support?
+Arjun: Yes, we have EU data centers. We decided to host Lisa's account on the Frankfurt cluster. I'll have our infrastructure team confirm that by tomorrow.
+Lisa: That would be great. Can you send us the data processing agreement as well?
+Arjun: Yes, I'll send the DPA by end of this week — let's say by Friday at 5 PM.
+Lisa: Perfect. Second concern is SLA. We need 99.9% uptime guarantee with a response time under 200 milliseconds for API calls.
+Arjun: Our standard SLA is 99.9% uptime. For the response time, our average is 150ms so we should be well within your requirement. I'll include the SLA document with the DPA on Friday.
+Lisa: Excellent. Now, the integration timeline — when can we go live?
+Arjun: If we start the technical setup next Monday, we're looking at three weeks for the full integration. So go-live would be around the 15th of next month.
+Lisa: That works for us. We also need user training for about 20 people on our team.
+Arjun: Understood. Preethi on our customer success team will reach out to schedule the training sessions. I'll connect you both over email by tomorrow.
+Lisa: Thank you. One more thing — pricing. We discussed the enterprise plan. Can we get the final quote?
+Arjun: Yes, I'll have our sales team send over the final quote by Wednesday. We'll also include the volume discount we discussed — 15% for a 2-year commitment.
+Lisa: That sounds right. If the quote looks good, we can sign by end of next week.
+Arjun: Perfect. So to recap — I'll send the DPA and SLA by Friday, the final quote by Wednesday, connect you with Preethi by tomorrow, and confirm the Frankfurt cluster hosting by tomorrow as well. We agreed on a go-live date of the 15th.
+Lisa: That all sounds great. I think we're very close to closing this. Looking forward to it.
+Arjun: Likewise. Talk soon, Lisa.

@@ -1,0 +1,21 @@
+Rachel: Hi everyone, thanks for joining the product review. Let's go through the Q3 roadmap items.
+David: Sure. The new onboarding flow is complete. I'll share the Figma prototype after this call.
+Rachel: That's great. What about the notification system? I heard there were some blockers.
+Marcus: Yes, the push notification service had rate limiting issues. We decided to switch from Firebase to OneSignal.
+Rachel: Okay, that's a big decision. Who owns the migration?
+Marcus: I will. I can have it done by next Thursday.
+Rachel: Perfect. And David, once Marcus is done, you'll need to update the onboarding flow to use the new notification triggers, right?
+David: Correct. That should take a day or two. So I'll have it done by the following Monday.
+Rachel: Alright. Also, we decided to postpone the dark mode feature to Q4. It's not a priority and we're running behind on the core features.
+Nadia: Understood. I'll update the roadmap accordingly and notify the design team.
+Rachel: Nadia, can you also prepare the product review slides for the board meeting? That's two weeks from today.
+Nadia: Of course. I'll have a draft ready by next Wednesday for everyone to review.
+Rachel: Excellent. One more thing — the API usage costs have doubled this quarter. We need to review our caching strategy.
+Marcus: I can do an audit of the API calls and identify what we can cache. Give me until end of this week.
+Rachel: Please do. If we can reduce calls by even 30%, that saves us significantly. We agreed that caching is a priority action item for this sprint.
+David: Should we set a target reduction percentage?
+Rachel: Yes, let's aim for 40% reduction. Marcus, please include that in your audit report.
+Marcus: Understood. I'll send the audit report by Friday with recommendations.
+Rachel: Great work everyone. Nadia please also follow up with the design team about the Q4 dark mode timeline this week.
+Nadia: Will do.
+Rachel: Perfect. See you all next week.

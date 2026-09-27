@@ -1,0 +1,22 @@
+Priya: Good morning everyone. Let's get started with the Q3 sprint planning. We have a lot to cover today.
+Alex: Morning. I've reviewed the backlog and I think we can commit to 14 story points this sprint.
+Jordan: That seems reasonable. I'll need to finalize the API contracts before Alex can start on the frontend integration though.
+Priya: Okay so Jordan, can you have the API spec ready by Wednesday?
+Jordan: Yes, I can do that. I'll share the Swagger doc on Wednesday afternoon.
+Priya: Perfect. Alex, once you have the spec, how long will the frontend integration take?
+Alex: Probably three days. So I should be done by end of next week, Friday at the latest.
+Priya: Good. We also decided to drop the legacy export feature from this sprint. It's too risky to touch before the client demo.
+Sam: Agreed. I'll remove those tickets from the board and move them to the backlog.
+Priya: Sam, can you also set up the staging environment by Thursday? QA needs it to start testing.
+Sam: Sure. I'll have staging ready by Thursday morning.
+Jordan: One more thing — we need to upgrade the PostgreSQL version. There are security patches we're missing.
+Priya: Good catch. Let's assign that to Sam as well. Sam, can you handle the DB upgrade this sprint?
+Sam: Yes, I'll do it after staging is set up. I'll schedule it for Friday to minimize disruption.
+Alex: Should we notify the team before the DB goes down?
+Priya: Yes, definitely. Sam, please send a maintenance notice by Wednesday at the latest.
+Sam: Will do. I'll send the notice and also update the runbook.
+Priya: Alright. To summarize — Jordan owns the API spec by Wednesday, Alex owns frontend integration by next Friday, Sam owns staging by Thursday, DB upgrade by Friday, and maintenance notice by Wednesday. Any questions?
+Alex: Nope, all clear.
+Jordan: Sounds good.
+Sam: Got it.
+Priya: Great. Let's check in on Wednesday for a quick sync. Meeting adjourned.
