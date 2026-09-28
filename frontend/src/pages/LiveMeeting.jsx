@@ -19,7 +19,7 @@ export default function LiveMeeting() {
     let interval;
     const fetchLive = async () => {
       try {
-        const res = await axios.get(`${API_URL}/live`);
+        const res = await axios.get(`${API_URL}/meetings/live`);
         setLiveData(res.data);
         setError(false);
       } catch (e) {

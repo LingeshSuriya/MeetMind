@@ -42,7 +42,7 @@ function syncToLive() {
     // Send to backend's live session memory (fire and forget)
     try {
         const formatted = transcript.map(t => t.speaker + ': ' + t.text).join('\n');
-        fetch('http://localhost:3000/api/live', {
+        fetch('http://localhost:3000/api/meetings/live', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ transcript: formatted, count: transcript.length })
