@@ -19,6 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!type) statusMsg.style.display = 'none';
     }
 
+    // ── Title Persistence ──────────────────────────────────────────────────────
+    chrome.storage.local.get(['meetmind_title'], (res) => {
+        if (res.meetmind_title) titleInput.value = res.meetmind_title;
+    });
+    titleInput.addEventListener('input', (e) => {
+        chrome.storage.local.set({ meetmind_title: e.target.value });
+    });
+
     // ── Live preview renderer ──────────────────────────────────────────────────
     function renderPreview(lines) {
         if (!lines || lines.length === 0) {
@@ -150,6 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 captureCounter.textContent = '0 lines';
                 captureCounter.className = 'badge';
                 renderPreview([]);
+                chrome.storage.local.remove('meetmind_title');
+                titleInput.value = '';
             });
         }
     });

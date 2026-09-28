@@ -5,6 +5,27 @@ const UploadedTranscriptProvider = require('../services/meetingSources/UploadedT
 // URL for the Python ML service
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
+// Global memory for the currently active live meeting
+let currentLiveTranscript = "";
+let currentLiveCount = 0;
+let currentLiveLastUpdated = Date.now();
+
+exports.updateLive = (req, res) => {
+    currentLiveTranscript = req.body.transcript || "";
+    currentLiveCount = req.body.count || 0;
+    currentLiveLastUpdated = Date.now();
+    res.json({ success: true });
+};
+
+exports.getLive = (req, res) => {
+    // If it hasn't been updated in 2 hours, clear it out to avoid stale data
+    if (Date.now() - currentLiveLastUpdated > 2 * 60 * 60 * 1000) {
+        currentLiveTranscript = "";
+        currentLiveCount = 0;
+    }
+    res.json({ transcript: currentLiveTranscript, count: currentLiveCount });
+};
+
 exports.analyzeMeeting = async (req, res) => {
     const { title, transcript } = req.body;
 

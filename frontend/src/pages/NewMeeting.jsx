@@ -119,7 +119,7 @@ export default function NewMeeting() {
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
         <Mic size={18} className="text-blue-500 mt-0.5 shrink-0" />
         <div className="text-sm text-blue-700">
-          <strong>Live from Google Meet?</strong> Use the MeetMind extension — it captures speech in real-time and sends the transcript here automatically when you click <em>"Analyze & Save"</em>.
+          <strong>Live from Google Meet?</strong> Go to the <strong className="font-bold">Live View</strong> tab on the left to see your meeting transcript stream in real-time and analyze it directly!
         </div>
       </div>
 

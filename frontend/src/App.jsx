@@ -1,18 +1,20 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, History, BrainCircuit, CheckSquare, Clock } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, BrainCircuit, CheckSquare, Clock, Radio } from 'lucide-react';
 import Dashboard      from './pages/Dashboard';
 import NewMeeting     from './pages/NewMeeting';
 import MeetingAnalysis from './pages/MeetingAnalysis';
 import MeetingHistory from './pages/MeetingHistory';
 import ActionBoard    from './pages/ActionBoard';
 import DeadlinesPage  from './pages/DeadlinesPage';
+import LiveMeeting    from './pages/LiveMeeting';
 
 function Sidebar() {
   const location = useLocation();
 
   const navItems = [
     { name: 'Dashboard',     path: '/',            icon: <LayoutDashboard size={20} /> },
+    { name: 'Live View',     path: '/live',        icon: <div className="relative"><Radio size={20} /><span className="absolute -top-1 -right-1 flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span></div> },
     { name: 'New Meeting',   path: '/new',          icon: <PlusCircle size={20} /> },
     { name: 'Action Board',  path: '/action-board', icon: <CheckSquare size={20} /> },
     { name: 'Deadlines',     path: '/deadlines',    icon: <Clock size={20} /> },
@@ -64,6 +66,7 @@ function App() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
           <Routes>
             <Route path="/"              element={<Dashboard />} />
+            <Route path="/live"          element={<LiveMeeting />} />
             <Route path="/new"           element={<NewMeeting />} />
             <Route path="/history"       element={<MeetingHistory />} />
             <Route path="/action-board"  element={<ActionBoard />} />
